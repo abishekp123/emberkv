@@ -1,0 +1,13 @@
+# Binaries
+/emberkv
+*.exe
+
+# Test artifacts
+*.test
+
+# Editor noise
+.vscode/
+.DS_Store
+
+# Local DBs
+/tmp/emberkv*
