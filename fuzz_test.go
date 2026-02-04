@@ -1,0 +1,21 @@
+package emberkv
+
+import "testing"
+
+func FuzzParseHeader(f *testing.F) {
+	seeds := [][]byte{
+		[]byte("EMBK\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+		[]byte("EMBK\x01\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+		[]byte("BAD!\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+	}
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, in []byte) {
+		if len(in) < headerSize {
+			return
+		}
+		_, _, _, _, _ = parseHeader(in[:headerSize])
+	})
+}
