@@ -7,10 +7,39 @@ This project is intentionally compact and auditable so it can be explained in a 
 ## Quick start
 
 ```bash
-go build ./...
-./emberkv -dir /tmp/emberkv-demo set first "hello"
-./emberkv -dir /tmp/emberkv-demo get first
-./emberkv -dir /tmp/emberkv-demo delete first
+go build -o emberkv ./cmd/emberkv
+./emberkv -dir /tmp/emberkv-demo -cmd set -key first -value hello
+./emberkv -dir /tmp/emberkv-demo -cmd get -key first
+./emberkv -dir /tmp/emberkv-demo -cmd delete -key first
+```
+
+## Basic usage
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/abishekp123/emberkv"
+)
+
+func main() {
+    db, err := emberkv.Open("/tmp/emberkv")
+    if err != nil {
+        panic(err)
+    }
+    defer db.Close()
+
+    if err := db.Set([]byte("user:1"), []byte("alice")); err != nil {
+        panic(err)
+    }
+    value, ok, err := db.Get([]byte("user:1"))
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(ok, string(value))
+}
 ```
 
 ## Design

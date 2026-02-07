@@ -239,6 +239,44 @@ func TestRecoveryAfterCorruptionStopsAtBadRecord(t *testing.T) {
 	}
 }
 
+func TestOpenRestoresBackupAfterInterruptedCompaction(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "db")
+	db, err := Open(dir)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	if err := db.Set([]byte("a"), []byte("1")); err != nil {
+		t.Fatalf("Set(a): %v", err)
+	}
+	if err := db.Set([]byte("b"), []byte("2")); err != nil {
+		t.Fatalf("Set(b): %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	logPath := filepath.Join(dir, "emberkv.log")
+	backupPath := logPath + ".bak"
+	if err := os.Rename(logPath, backupPath); err != nil {
+		t.Fatalf("rename active log: %v", err)
+	}
+	if _, err := os.Stat(logPath); err == nil {
+		t.Fatalf("expected active log to be absent before restore")
+	}
+
+	db, err = Open(dir)
+	if err != nil {
+		t.Fatalf("Open() after interrupted compaction = %v", err)
+	}
+	defer db.Close()
+	if v, ok, err := db.Get([]byte("a")); err != nil || !ok || string(v) != "1" {
+		t.Fatalf("Get(a) after backup restore = (%q, %v, %v), want (1, true, nil)", v, ok, err)
+	}
+	if v, ok, err := db.Get([]byte("b")); err != nil || !ok || string(v) != "2" {
+		t.Fatalf("Get(b) after backup restore = (%q, %v, %v), want (2, true, nil)", v, ok, err)
+	}
+}
+
 func TestReopenRebuildsIndex(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "db")
 	db, err := Open(dir)
