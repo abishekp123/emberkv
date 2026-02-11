@@ -277,6 +277,29 @@ func TestOpenRestoresBackupAfterInterruptedCompaction(t *testing.T) {
 	}
 }
 
+func TestCompactWritesBackupBeforeSwap(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "db")
+	db, err := Open(dir)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	if err := db.Set([]byte("a"), []byte("1")); err != nil {
+		t.Fatalf("Set(a): %v", err)
+	}
+	if err := db.Compact(); err != nil {
+		t.Fatalf("Compact() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "emberkv.log.bak")); !os.IsNotExist(err) {
+		t.Fatalf("backup should be cleaned after successful compaction, got %v", err)
+	}
+	if v, ok, err := db.Get([]byte("a")); err != nil || !ok || string(v) != "1" {
+		t.Fatalf("Get(a) after compact = (%q,%v,%v), want (1,true,nil)", v, ok, err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+}
+
 func TestReopenRebuildsIndex(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "db")
 	db, err := Open(dir)
