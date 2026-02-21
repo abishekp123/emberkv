@@ -72,6 +72,21 @@ Measured on macOS 15.2 arm64 with Go 1.27.3 on Apple M3 hardware. The numbers be
 
 The reopen and compaction benchmarks are cold-start measurements from disk; the read benchmark is warm-cache style from the in-memory index after the values have been loaded.
 
+## Verification guarantees
+
+The test suite establishes the following behavior as code-level guarantees in this repository:
+
+- `Set`, `Get`, `Delete`, and `Compact` behave correctly for the expected path
+- missing keys and empty values are distinguished properly
+- invalid or oversized keys and values are rejected before allocation
+- reopen and index rebuild preserve the last valid state
+- final truncated records are ignored without losing the previous valid database state
+- checksum failures and corrupt tail data stop recovery conservatively
+- compaction removes stale entries without reintroducing deleted keys
+- the store rejects operations after `Close`
+
+The remaining design assumptions are intentionally explicit: there is still a single-process writer model, no replication, and no guarantee beyond local single-host durability on a normal filesystem.
+
 ## Public API
 
 ```go
@@ -95,5 +110,24 @@ if ok {
 - local-filesystem durability only
 - no replication or transactions
 - no multi-key atomic operations
+- recovery stops at the first invalid record rather than trying to salvage later bytes
+- compaction is intentionally conservative and does not try to recover from concurrent file mutation
+
+## Interview questions
+
+1. Why is the design append-only instead of in-place updates?
+   - The append-only log keeps crash recovery simple: the last valid state is reconstructed by replaying valid records from the beginning, and we never have to repair a damaged file in place.
+
+2. How do you prevent stale values from reappearing after compaction?
+   - Compaction rebuilds a fresh log from the current in-memory index and never replays tombstoned or deleted entries. The active log is swapped via a backup-first rename sequence so there is a safe fallback.
+
+3. What happens when the process crashes mid-write?
+   - Recovery ignores the final partial record because the file ends before the full record header or payload can be read. The database preserves the last complete state.
+
+4. Why not just keep the log as the source of truth and skip the hash index?
+   - The in-memory map makes lookups cheap and keeps reads O(1) for common key access, while still allowing recovery by rebuilding the map from the log on open.
+
+5. What is the main tradeoff of the current implementation?
+   - It is simple and auditable, but it is intentionally not a distributed or highly concurrent database. It assumes a single local writer and ordinary filesystem semantics.
 
 Commit timestamps were reconstructed to a February 2026 timeline; they do not represent the actual implementation dates.
