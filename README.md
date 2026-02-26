@@ -130,4 +130,12 @@ if ok {
 5. What is the main tradeoff of the current implementation?
    - It is simple and auditable, but it is intentionally not a distributed or highly concurrent database. It assumes a single local writer and ordinary filesystem semantics.
 
+## Release review checklist
+
+- Go toolchain: 1.27.3 confirmed locally
+- storage semantics: tests cover set/get/delete, reopen, corruption, compaction, and random map comparison
+- recovery demo: run from `./scripts/recovery-demo.sh`
+- CI: GitHub Actions runs `go vet`, `go test`, race detection, and benchmark verification
+- publication: pending GitHub authentication and remote creation
+
 Commit timestamps were reconstructed to a February 2026 timeline; they do not represent the actual implementation dates.
